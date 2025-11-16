@@ -1,0 +1,11 @@
+{
+    "name": "befoerderung-workers",
+    "version": "1.0.0",
+    "type": "module",
+    "dependencies": {
+      "@camunda8/sdk": "*"
+    },
+    "scripts": {
+      "start": "node worker.js"
+    }
+  }
