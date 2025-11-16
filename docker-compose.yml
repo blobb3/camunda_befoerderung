@@ -44,9 +44,11 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      # HIER ÄNDERN! Erhöhen Sie den Wert auf mindestens 1024m (1 GB) oder 2g (2 GB)
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g  # <= Empfohlene Änderung
     volumes:
       - elasticsearch-data:/usr/share/elasticsearch/data
+
 
 volumes:
   zeebe-data:
