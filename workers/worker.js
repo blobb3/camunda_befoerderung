@@ -1,59 +1,62 @@
 import { Camunda8 } from '@camunda8/sdk';
-import * as fs from 'fs'; // Benötigt für das Deployment der BPMN-Datei
+import * as fs from 'fs';
 
-// 1. INITIALISIERUNG
-// Explizite Adresse ist notwendig, wenn der Worker außerhalb des Docker-Netzwerks läuft.
+// WICHTIG: Verwende 127.0.0.1 statt localhost (IPv4 statt IPv6)
 const c8 = new Camunda8({
-    zeebeGrpcAddress: 'localhost:26500'
+    zeebeGrpcSettings: {
+        hostname: '127.0.0.1',
+        port: 26500
+    }
 });
+
 const zeebe = c8.getZeebeGrpcApiClient();
 
-console.log('Worker gestartet...');
+console.log('🚀 Worker gestartet...');
 
-// 2. PROZESS-DEPLOYMENT UND START (EINMALIGE AKTION)
-// Diese Funktion stellt den Prozess bereit und startet eine Instanz.
+// Prozess deployen und starten
 async function deployAndStartProcess() {
-    // PASSE DIESE WERTE AN DEINE BPMN-DATEI AN
-    const processName = 'IST_PROZESS2.bpmn'; 
-    const processId = 'IST_PROZESS2'; 
-
+    const processName = 'IST_PROZESS2.bpmn';
+    const processId = 'IST_PROZESS2';
+    
     try {
         console.log(`⏳ Starte Deployment von ${processName}...`);
         
         // Deployment
-        const deployResult = await zeebe.deployProcess({
-            definition: fs.readFileSync(processName), // Liest die BPMN-Datei aus dem Dateisystem
-            name: processName,
+        const deployResult = await zeebe.deployResource({
+            processFilename: processName
         });
-        console.log(`✅ Prozess deployed! Key: ${deployResult.key}`);
-
+        
+        console.log(`✅ Prozess deployed! Key: ${deployResult.deployments[0].process.processDefinitionKey}`);
+        
         // Instanz starten
         const startResult = await zeebe.createProcessInstance({
             bpmnProcessId: processId,
             variables: {
-                "mitarbeiterId": "MA123",
-                "befoerderungId": "BF001",
-                "befoerderungSinnvoll": true,
-                "antragVollstaendig": true,
-                "befoerderungAngenommen": true,
-                "gehaltsvorschlagAkzeptiert": true,
-                "weitereGenehmigungen": false,
-                "antragGenehmigt": true,
-                "vertragAngenommen": true,
-                "vorgesetzterGenehmigt": true
+                mitarbeiterId: "MA123",
+                befoerderungId: "BF001",
+                befoerderungSinnvoll: true,
+                antragVollstaendig: true,
+                befoerderungAngenommen: true,
+                gehaltsvorschlagAkzeptiert: true,
+                weitereGenehmigungen: false,
+                antragGenehmigt: true,
+                vertragAngenommen: true,
+                vorgesetzterGenehmigt: true
             }
         });
+        
         console.log(`🚀 Prozessinstanz gestartet! Key: ${startResult.processInstanceKey}`);
-
+        
     } catch (error) {
         console.error('❌ Deployment/Start Fehler:', error.message);
+        console.error(error);
     }
 }
 
-// Funktion aufrufen:
+// Deployment ausführen
 deployAndStartProcess();
 
-// 3. WORKER-REGISTRIERUNG
+// Worker registrieren
 const jobTypes = [
     'send-rejection-notification',
     'send-application-to-hr-bp',
@@ -74,18 +77,18 @@ jobTypes.forEach(jobType => {
     zeebe.createWorker({
         taskType: jobType,
         taskHandler: async (job) => {
-            console.log(`Verarbeite Job: ${jobType}`);
+            console.log(`📧 Verarbeite Job: ${jobType}`);
             console.log('Job Variablen:', job.variables);
-
+            
             // Simuliere E-Mail senden
             await new Promise(resolve => setTimeout(resolve, 2000));
-
+            
             console.log(`✅ Job ${jobType} abgeschlossen`);
-
+            
             return job.complete();
         }
     });
-
+    
     console.log(`✅ Worker registriert für: ${jobType}`);
 });
 
